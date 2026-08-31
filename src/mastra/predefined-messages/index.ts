@@ -3,7 +3,7 @@
 export const PREDEFINED_MESSAGES = {
   business: {
     high_volume:
-      'Atenção: devido ao alto volume de solicitações neste momento, nosso tempo de resposta pode ser maior do que o normal. Contamos com sua compreensão e não se preocupe: garantimos que vamos responder você assim que possível.',
+      'Atenção: devido ao *alto volume de solicitações* neste momento, nosso tempo de resposta pode ser *maior do que o normal*.\n\nJá *acionamos um especialista* do nosso time para dar continuidade ao seu atendimento assim que possível.\n\nFico por aqui à disposição caso precise de mais alguma coisa 💜',
     outside_hours:
       'Como sua solicitação precisa do suporte do nosso time, peço que aguarde o início do horário de atendimento. Estaremos de volta a partir das 10h para dar continuidade ao seu caso, combinado?',
   },

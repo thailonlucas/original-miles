@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import { buildSystemPrompt } from './prompts/system-prompt';
-import { lunaWorkingMemorySchema } from './schema';
+import { lunaWorkingMemoryAgentOutputSchema } from './schema';
 
 export const lunaWorkingMemoryAgent = new Agent({
   id: 'luna-working-memory',
@@ -18,7 +18,7 @@ export const lunaWorkingMemoryAgent = new Agent({
   model: 'openai/gpt-5.6-luna',
   defaultOptions: {
     structuredOutput: {
-      schema: lunaWorkingMemorySchema,
+      schema: lunaWorkingMemoryAgentOutputSchema,
     },
   },
 });

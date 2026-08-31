@@ -87,7 +87,7 @@ async function onNewZendeskMessageReceived(appId: string, payload: ZendeskConver
     logConversation(zendeskPayload.conversationId, "empresa mandou mensagem na conversa" )
     zendesk
       .connectHuman(appId, zendeskPayload.conversationId, {
-        tags: buildHandoffTags('luna-interrompida', null),
+        tags: buildHandoffTags('luna-transferencia', null),
         ticketFields: buildHandoffTicketFields(zendeskPayload.conversationId, null),
       })
       .then(() => logConversation(zendeskPayload.conversationId, "luna desativada da conversa" ));
@@ -189,16 +189,37 @@ async function onNewZendeskMessageReceived(appId: string, payload: ZendeskConver
         },
       );
 
-      await zendesk.connectHuman(merged.appId, merged.conversationId, {
+      // `connectHumanAndKeepAiAgentActive` abre o ticket pro time humano (fatal se falhar, já com
+      // retry embutido em `connectHuman`) e devolve o controle pra Luna em seguida (não fatal —
+      // se falhar, a Luna só fica muda até alguém repassar o controle manualmente).
+      await zendesk.connectHumanAndKeepAiAgentActive(merged.appId, merged.conversationId, {
         tags: buildHandoffTags(action, working_memory, tabulacaoTags),
         ticketFields: buildHandoffTicketFields(merged.conversationId, working_memory),
       });
 
-      // Só avisa o cliente depois que a transferência de fato aconteceu — antes disso o handoff
-      // podia falhar (rede, API do Zendesk) e o cliente ficava com o aviso de espera sem nunca
-      // ser transferido de verdade.
+      // Deixa registrado na working memory que um especialista já foi acionado, pra Luna não
+      // oferecer transferência de novo enquanto segue ativa nessa conversa. Não fatal — se falhar,
+      // só loga; o ticket já foi aberto pro humano de qualquer forma.
+      await Luna.markSpecialistEngaged(
+        merged.conversationId,
+        merged.resourceId,
+        'Já acionei um especialista, assim que possível sua solicitação será respondida.',
+      ).catch((error) => logConversationError(merged.conversationId, 'falha ao gravar "especialista acionado" na working memory', error));
+
+      // Só avisa o cliente depois que o ticket de fato foi aberto pro humano — antes disso o
+      // handoff podia falhar (rede, API do Zendesk) e o cliente ficava com o aviso de espera sem
+      // nunca ser transferido de verdade.
       const notice = resolveBusinessByAppId(merged.appId).getHandoffNoticeMessage();
-      if (notice) await zendesk.sendMessage(merged.appId, merged.conversationId, notice);
+      if (notice) {
+        await zendesk.sendMessage(merged.appId, merged.conversationId, notice);
+
+        // Esse envio não passa por `luna.generate()`, então não entraria sozinho no histórico da
+        // Luna — sem isso, a próxima mensagem do cliente (ex.: "obrigado") apareceria pra ela sem
+        // o antecedente real na conversa, quebrando a cronologia.
+        await Luna.recordSentMessage(merged.conversationId, merged.resourceId, notice).catch((error) =>
+          logConversationError(merged.conversationId, 'falha ao registrar aviso de handoff no histórico da Luna', error),
+        );
+      }
     }
   });
 }

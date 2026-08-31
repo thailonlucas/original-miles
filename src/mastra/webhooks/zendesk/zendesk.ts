@@ -1,5 +1,6 @@
 import { env } from '../../config/env';
 import { requireEnv } from '../../config/require-env';
+import { logConversationError } from '../../helpers/logger';
 import { zendeskConversationsRequest } from '../../services/zendesk';
 import type { ZendeskConversationMessagePayload, ZendeskMessage, ZendeskMessageContent } from './schema';
 
@@ -8,6 +9,11 @@ const BUSINESS_AUTHOR = {
   displayName: 'Suporte BuyTicket - Luna',
   avatarUrl: 'https://buyticket.zendesk.com/flow_composer/assets/bot-avatar/01J6ZVKVXSQC3TN0QC4SNQJ12W',
 };
+
+// Conectar o humano é a parte que não pode falhar em silêncio: sem ela, o ticket fica preso com o
+// agente de IA e o time de suporte não consegue nem responder, nem finalizar, nem atualizar o
+// ticket. Por isso `connectHuman` insiste algumas vezes antes de desistir de vez.
+const CONNECT_HUMAN_MAX_ATTEMPTS = 3;
 
 // Provedor Zendesk (Sunshine Conversations/Smooch) usado na integração de WhatsApp: mensageria
 // e handoff pro time humano. Mecânica pura do Zendesk — nenhuma regra de negócio (horário,
@@ -42,10 +48,25 @@ export const zendesk = {
       metadata[`dataCapture.ticketField.${fieldId}`] = value;
     }
 
-    await zendeskConversationsRequest(appId, `conversations/${conversationId}/passControl`, {
-      method: 'POST',
-      body: { switchboardIntegration: ZENDESK_HUMAN_SWITCHBOARD_ID, metadata },
-    });
+    for (let attempt = 1; attempt <= CONNECT_HUMAN_MAX_ATTEMPTS; attempt++) {
+      try {
+        await zendeskConversationsRequest(appId, `conversations/${conversationId}/passControl`, {
+          method: 'POST',
+          body: { switchboardIntegration: ZENDESK_HUMAN_SWITCHBOARD_ID, metadata },
+        });
+        return;
+      } catch (error) {
+        const isLastAttempt = attempt === CONNECT_HUMAN_MAX_ATTEMPTS;
+        logConversationError(
+          conversationId,
+          isLastAttempt
+            ? `falha ao conectar humano (tentativa ${attempt}/${CONNECT_HUMAN_MAX_ATTEMPTS}), desistindo`
+            : `falha ao conectar humano (tentativa ${attempt}/${CONNECT_HUMAN_MAX_ATTEMPTS}), tentando de novo`,
+          error,
+        );
+        if (isLastAttempt) throw error;
+      }
+    }
   },
 
   async connectAIAgent(appId: string, conversationId: string): Promise<void> {
@@ -58,6 +79,32 @@ export const zendesk = {
       method: 'POST',
       body: { switchboardIntegration: ZENDESK_AI_AGENT_SWITCHBOARD_ID, metadata: { lang: 'pt-br' } },
     });
+  },
+
+  // Fluxo novo pro handoff "normal" (guardrail decidiu transferir): abre o ticket pro time humano
+  // (sem isso, o ticket fica preso com o agente de IA e o suporte não consegue agir nele) e, na
+  // sequência, devolve o controle pra Luna, pra ela continuar respondendo o cliente enquanto
+  // aguarda um humano assumir de vez. As duas chamadas são sequenciais, nunca em paralelo — passar
+  // controle duas vezes ao mesmo tempo pra mesma conversa é condição de corrida no Zendesk.
+  // Conectar o humano é a parte fatal (já tem retry embutido em `connectHuman`, ver acima); se só a
+  // volta pra Luna falhar, loga e segue — pior caso, a Luna fica muda de novo, igual comportamento
+  // anterior a esta função existir, mas o ticket já está aberto pro time.
+  async connectHumanAndKeepAiAgentActive(
+    appId: string,
+    conversationId: string,
+    options: { tags?: string[]; ticketFields?: Record<string, string> } = {},
+  ): Promise<void> {
+    await this.connectHuman(appId, conversationId, options);
+
+    try {
+      await this.connectAIAgent(appId, conversationId);
+    } catch (error) {
+      logConversationError(
+        conversationId,
+        'ticket aberto pro humano, mas falha ao devolver o controle pra Luna — ela fica muda até alguém repassar o controle manualmente',
+        error,
+      );
+    }
   },
 };
 

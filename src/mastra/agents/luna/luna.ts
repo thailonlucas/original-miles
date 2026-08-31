@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { RequestContext } from '@mastra/core/request-context';
+import { deepMergeWorkingMemory } from '@mastra/memory';
 import type { GuardrailOutput } from '../luna-guardrail/schema';
 import type { LunaWorkingMemory } from '../luna-working-memory/schema';
 import { luna } from './luna-agent';
@@ -141,4 +143,45 @@ async function getMessageHistory(thread: string, resource?: string, filters: Lun
   };
 }
 
-export const Luna = { id: 'Luna', ask, getMessageHistory};
+// Grava `especialista_acionado` direto na working memory da thread, sem passar pelo
+// `lunaWorkingMemoryAgent` — é uma nota determinística (o handoff do Zendesk já sabe exatamente o
+// que aconteceu), não algo pra um LLM inferir. Faz o mesmo read-merge-write de
+// `LunaWorkingMemoryProcessor` (`agents/luna/processors/output-working-memory-processor.ts`) pra
+// não sobrescrever os outros campos já salvos (nome_cliente, id_pedido etc.).
+async function markSpecialistEngaged(thread: string, resource: string, note: string): Promise<void> {
+  const lunaMemory = await luna.getMemory();
+  if (!lunaMemory) return;
+
+  const currentRaw = await lunaMemory.getWorkingMemory({ threadId: thread, resourceId: resource });
+  const current = currentRaw ? JSON.parse(currentRaw) : {};
+  const merged = deepMergeWorkingMemory(current, { especialista_acionado: note });
+  await lunaMemory.updateWorkingMemory({ threadId: thread, resourceId: resource, workingMemory: JSON.stringify(merged) });
+}
+
+// Mensagens como o aviso de handoff (`business/`) são mandadas direto pro Zendesk
+// (`zendesk.sendMessage`), sem passar por `luna.generate()` — por isso nunca entram no histórico
+// que a própria memória da Luna guarda. Sem esse registro, a Luna perde a cronologia: na próxima
+// geração ela veria a próxima mensagem do cliente (ex.: "obrigado") sem o antecedente real na
+// conversa, só o fato solto da working memory (`markSpecialistEngaged`), sem saber que aconteceu
+// bem ali, logo depois da última resposta dela. `saveMessages` é a API pública do Mastra pra criar
+// mensagem manualmente fora do `generate()` (thread e resource já existem a essa altura, não
+// precisa `createThread`).
+async function recordSentMessage(thread: string, resource: string, text: string): Promise<void> {
+  const lunaMemory = await luna.getMemory();
+  if (!lunaMemory) return;
+
+  await lunaMemory.saveMessages({
+    messages: [
+      {
+        id: randomUUID(),
+        role: 'assistant',
+        createdAt: new Date(),
+        threadId: thread,
+        resourceId: resource,
+        content: { format: 2, parts: [{ type: 'text', text }] },
+      },
+    ],
+  });
+}
+
+export const Luna = { id: 'Luna', ask, getMessageHistory, markSpecialistEngaged, recordSentMessage };
