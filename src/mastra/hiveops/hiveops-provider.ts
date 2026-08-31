@@ -26,4 +26,5 @@ export interface HiveOpsProvider {
   getPriorityTags(): Promise<HiveOpsPriorityTag[]>;
   findConversationByExternalId(externalId: string): Promise<{ id: string } | null>;
   getAgentConfig(): Promise<HiveOpsAgentConfig>;
+  getBypassKeywords(): Promise<string[]>;
 }

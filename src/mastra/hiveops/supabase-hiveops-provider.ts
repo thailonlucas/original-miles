@@ -160,4 +160,15 @@ export class SupabaseHiveOpsProvider implements HiveOpsProvider {
 
     return { systemPrompt: data.system_prompt, guardrailPrompt: data.guardrail_prompt };
   }
+
+  async getBypassKeywords(): Promise<string[]> {
+    const agentId = requireAgentId('Luna bypass keywords');
+
+    const data = await unwrapOrThrow<{ bypass_keys: string[] | null }>(
+      getSupabaseClient().from('agents').select('bypass_keys').eq('id', agentId).single(),
+      'load Luna bypass keywords from Supabase',
+    );
+
+    return data?.bypass_keys ?? [];
+  }
 }

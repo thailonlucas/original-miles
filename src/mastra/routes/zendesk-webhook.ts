@@ -100,8 +100,11 @@ async function onNewZendeskMessageReceived(appId: string, payload: ZendeskConver
   );
   // Contato com alguma tag de handoff no Zendesk, ou mensagem com palavra-chave de bypass:
   // a Luna não cuida desses casos.
-  const bypassKeyword = isMessageKeywordToBypassAgent(zendeskPayload.additionalText);
-  if ((await isContactBlocked(zendeskPayload.conversationId, zendeskPayload.userPhone, zendeskPayload.externalId)) || bypassKeyword) {
+  const [blocked, bypassKeyword] = await Promise.all([
+    isContactBlocked(zendeskPayload.conversationId, zendeskPayload.userPhone, zendeskPayload.externalId),
+    isMessageKeywordToBypassAgent(zendeskPayload.conversationId, zendeskPayload.additionalText),
+  ]);
+  if (blocked || bypassKeyword) {
     logConversation(
       zendeskPayload.conversationId,
       bypassKeyword ? 'mensagem com palavra-chave de bypass' : 'usuário bloqueado ou com tags de bloqueio',
@@ -240,9 +243,17 @@ async function isContactBlocked(conversationId: string, phone: string | null, ex
 }
 
 // Palavras-chave que, quando a mensagem do cliente é exatamente igual (sem variação), pulam a
-// Luna e vão direto pro humano — Isso para as mensagens ativas e o usuário clica num botão ou mensagens ativas do time de social
-const BYPASS_AGENT_KEYWORDS = ['Vamos!', 'Preciso de suporte!', 'Vamos falar!', 'Pode trocar o ingresso!', 'Prefiro o cancelamento!', 'Sim, tenho o ingresso!', 'Não tenho mais!'];
-
-function isMessageKeywordToBypassAgent(message: string): boolean {
-  return BYPASS_AGENT_KEYWORDS.includes(message);
+// Luna e vão direto pro humano — isso pra mensagens ativas onde o usuário clica num botão ou
+// mensagens ativas do time de social. Vêm da coluna `bypass_keys` (array de text) na tabela
+// `agents` do HiveOps/Supabase — editar lá reflete na próxima mensagem, sem deploy. Se a busca
+// falhar, segue o fluxo assumindo que não é bypass (mesma lógica de fail-open do `isContactBlocked`
+// acima) — a Luna não pode travar por uma falha nessa verificação.
+async function isMessageKeywordToBypassAgent(conversationId: string, message: string): Promise<boolean> {
+  try {
+    const bypassKeywords = await getHiveOps().getBypassKeywords();
+    return bypassKeywords.includes(message);
+  } catch (error) {
+    logConversationError(conversationId, 'erro ao buscar palavras-chave de bypass no HiveOps — deixando passar pra Luna', error);
+    return false;
+  }
 }
