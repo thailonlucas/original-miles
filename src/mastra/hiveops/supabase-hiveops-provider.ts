@@ -13,6 +13,13 @@ import type {
 
 const ASSIGNED_TO = '53692070-e875-43de-96b4-0f020b8acdf9';
 
+// Títulos de tag cadastrados no HiveOps às vezes vêm com quebra de linha/espaço sobrando (comum ao
+// colar de planilha/Notion). Colapsa espaços em branco (inclusive quebras de linha) internos numa
+// linha só e tira as pontas — mantém o texto legível em vez de simplesmente remover os caracteres.
+function sanitizeTagTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim();
+}
+
 export class SupabaseHiveOpsProvider implements HiveOpsProvider {
   async getActiveSkills(): Promise<HiveOpsSkill[]> {
     const tenantId = requireTenantId('Luna skills (playbooks)');
@@ -123,7 +130,7 @@ export class SupabaseHiveOpsProvider implements HiveOpsProvider {
       'load handoff tags',
     );
 
-    return (data ?? []).map((tag) => tag.title);
+    return (data ?? []).map((tag) => sanitizeTagTitle(tag.title));
   }
 
   async getPriorityTags(): Promise<HiveOpsPriorityTag[]> {
@@ -134,7 +141,12 @@ export class SupabaseHiveOpsProvider implements HiveOpsProvider {
       'load priority tags',
     );
 
-    return (data ?? []).map((tag) => ({ title: tag.title, description: tag.description ?? '' }));
+    // `title` vira valor literal de um z.enum no structured output do agente de tags especiais
+    // (`buildSpecialTagsOutputSchema`) — quebra de linha cadastrada por engano no HiveOps (comum ao
+    // colar de planilha/Notion) faz a OpenAI rejeitar o schema inteiro em modo strict, derrubando o
+    // agente pra toda conversa, não só pra quem teria aquela tag. Sanitiza aqui, na borda onde o
+    // dado externo entra no sistema.
+    return (data ?? []).map((tag) => ({ title: sanitizeTagTitle(tag.title), description: tag.description ?? '' }));
   }
 
   async findConversationByExternalId(externalId: string): Promise<{ id: string } | null> {

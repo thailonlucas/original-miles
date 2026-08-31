@@ -168,14 +168,26 @@ async function onNewZendeskMessageReceived(appId: string, payload: ZendeskConver
     }
 
     if (action === 'connect_human' || action === 'reply_and_connect_human') {
-      const notice = resolveBusinessByAppId(merged.appId).getHandoffNoticeMessage();
-      if (notice) await zendesk.sendMessage(merged.appId, merged.conversationId, notice);
+      // Tags de tabulação são um "nice to have" resolvido por IA (2 agentes) — se falhar (timeout,
+      // rate limit etc.), não pode travar o handoff em si. `buildHandoffTags` já garante as tags
+      // base (luna, luna-transferencia, motivo, tipo_cliente...) mesmo com `tabulacaoTags` vazio.
+      const tabulacaoTags = await createTicketTagsWithAI(merged.conversationId, merged.resourceId, working_memory).catch(
+        (error) => {
+          logConversationError(merged.conversationId, 'falha ao gerar tags de tabulação via IA — seguindo sem elas', error);
+          return [];
+        },
+      );
 
-      const tabulacaoTags = await createTicketTagsWithAI(merged.conversationId, merged.resourceId, working_memory);
       await zendesk.connectHuman(merged.appId, merged.conversationId, {
         tags: buildHandoffTags(action, working_memory, tabulacaoTags),
         ticketFields: buildHandoffTicketFields(merged.conversationId, working_memory),
       });
+
+      // Só avisa o cliente depois que a transferência de fato aconteceu — antes disso o handoff
+      // podia falhar (rede, API do Zendesk) e o cliente ficava com o aviso de espera sem nunca
+      // ser transferido de verdade.
+      const notice = resolveBusinessByAppId(merged.appId).getHandoffNoticeMessage();
+      if (notice) await zendesk.sendMessage(merged.appId, merged.conversationId, notice);
     }
   });
 }
