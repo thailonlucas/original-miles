@@ -11,6 +11,7 @@ export const PREDEFINED_MESSAGES = {
     video_unsupported: '[Usuário enviou um vídeo, confirme o recebimento]',
     sticker_unsupported: '[Cliente enviou uma figurinha ou emoji]',
     file_placeholder: 'usuário enviou um arquivo',
+    processing_failed: '[Cliente enviou uma mídia que não conseguimos processar, confirme o recebimento]',
   },
   error: {
     technical_issue: 'Estou transferindo o seu chamado para um especialista.',

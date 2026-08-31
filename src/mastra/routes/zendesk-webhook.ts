@@ -130,6 +130,17 @@ async function onNewZendeskMessageReceived(appId: string, payload: ZendeskConver
     mediaType: zendeskPayload.mediaType,
     mediaUrl: zendeskPayload.mediaUrl,
     additionalText: zendeskPayload.additionalText,
+  }).catch((error) => {
+    // Erro permanente da OpenAI (ex.: tipo de arquivo/áudio que ela não aceita) — sem esse
+    // fallback, a mensagem inteira se perde em silêncio aqui: nunca chega no buffer nem na Luna,
+    // e o cliente não recebe resposta nenhuma (esse `await` não tinha nenhum catch antes). Loga e
+    // segue com um texto genérico, mesma lógica de fail-open já usada acima pro bloqueio/bypass.
+    logConversationError(
+      zendeskPayload.conversationId,
+      `falha ao transformar mídia "${zendeskPayload.mediaType}" em texto, seguindo com texto genérico`,
+      error,
+    );
+    return PREDEFINED_MESSAGES.media.processing_failed;
   });
   const resourceId = zendeskPayload.userPhone ?? `zendesk:${zendeskPayload.userId ?? zendeskPayload.conversationId}`;
 
