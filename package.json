@@ -26,7 +26,7 @@
     "@mastra/pg": "1.21.1",
     "@mastra/pinecone": "1.1.0",
     "@supabase/supabase-js": "^2.112.3",
-    "ai": "^7.0.69",
+    "ai": "7.0.69",
     "dd-trace": "6.12.0",
     "zod": "^4.4.3"
   },
