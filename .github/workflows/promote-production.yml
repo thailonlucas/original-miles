@@ -24,18 +24,26 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Require an active administrators team member
+      - name: Require an active administradores or ops team member
         env:
           GH_TOKEN: ${{ secrets.WORKLOADS_INFRASTRUCTURE_TOKEN }}
         run: |
-          membership=$(curl --fail-with-body --silent --show-error \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer $GH_TOKEN" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/orgs/buyticketbrasil/teams/administradores/memberships/$GITHUB_ACTOR")
-          state=$(jq -r '.state // empty' <<< "$membership")
-          if [ "$state" != "active" ]; then
-            echo "$GITHUB_ACTOR is not an active administrators team member" >&2
+          authorized=false
+          for team in administradores ops; do
+            state=$(curl --silent --show-error \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/orgs/buyticketbrasil/teams/$team/memberships/$GITHUB_ACTOR" \
+              | jq -r '.state // empty')
+            if [ "$state" == "active" ]; then
+              authorized=true
+              break
+            fi
+          done
+
+          if [ "$authorized" != "true" ]; then
+            echo "$GITHUB_ACTOR is not an active member of administradores or ops" >&2
             exit 1
           fi
 
