@@ -51,7 +51,11 @@ export const mastra = new Mastra({
     // (default max: 20) estoura o pooler com EMAXCONNSESSION sob concorrência.
     default: new PostgresStore({ id: 'mastra-storage', connectionString: SUPABASE_DB_URL, max: 10 }),
     domains: {
-      observability: await new DuckDBStore({ path: ':memory:', memoryLimit: '256MB' }).getStore('observability'),
+      // memoryLimit alto o suficiente pra evitar spill em disco: o container roda com
+      // readOnlyRootFilesystem, então um spill (que o DuckDB tenta em ".tmp" relativo ao
+      // cwd) falha com "Read-only file system" e invalida o banco :memory: permanentemente
+      // até o pod reiniciar.
+      observability: await new DuckDBStore({ path: ':memory:', memoryLimit: '512MB' }).getStore('observability'),
     },
   }),
   editor: new MastraEditor(),
