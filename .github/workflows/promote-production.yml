@@ -127,9 +127,9 @@ jobs:
 
             - image tag: `${{ inputs.image_tag }}`
             - image digest: `${{ steps.meta.outputs.image_digest }}`
-            - Argo CD production sync: manual
+            - Argo CD production sync: automatic after merge
 
-            Merging this PR does not sync production automatically.
+            Merging this PR lets Argo CD sync production automatically.
 
       - name: Write promotion summary
         env:
@@ -141,5 +141,5 @@ jobs:
             echo "- Image tag: $IMAGE_TAG"
             echo "- Production values: deploy/helm/production/values.yaml"
             echo "- Change control: administrator-owned PR"
-            echo "- Argo CD sync: manual"
+            echo "- Argo CD sync: automatic after merge"
           } >> "$GITHUB_STEP_SUMMARY"
