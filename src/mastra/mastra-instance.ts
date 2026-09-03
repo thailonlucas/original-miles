@@ -1,4 +1,3 @@
-import 'dd-trace/init.js';
 import { Mastra } from '@mastra/core/mastra';
 import { SimpleAuth } from '@mastra/core/server';
 import { PostgresStore } from '@mastra/pg';
@@ -30,7 +29,7 @@ const { SUPABASE_DB_URL } = requireEnv({ SUPABASE_DB_URL: env.SUPABASE_DB_URL },
 
 export const mastra = new Mastra({
   bundler: {
-    externals: ['@duckdb/node-bindings', 'dd-trace'],
+    externals: ['@duckdb/node-bindings'],
   },
   // prettyPrint tem default `true` no PinoLogger do Mastra (mesmo com NODE_ENV=production) — sem
   // isso, cada log sai formatado em várias linhas em vez de um JSON compacto por entrada, o que

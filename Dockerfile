@@ -25,4 +25,4 @@ EXPOSE 4111
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:4111/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
-CMD ["--import", "dd-trace/initialize.mjs", "index.mjs"]
+CMD ["index.mjs"]
