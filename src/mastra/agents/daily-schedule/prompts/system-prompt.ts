@@ -77,3 +77,48 @@ Voucher NOVO que motivou esta atualização: id "${newVoucherId}" (veja na lista
 
 Atualize o roteiro com o que esse voucher novo adiciona ou muda.`;
 }
+
+// Modo 3: endpoint `POST /travel_agent/daily-schedule` — gera o roteiro do ZERO, mas ao contrário
+// de `buildRebuildInstructions` (roteiro ESPARSO, só dias com evento) devolve um item por dia
+// entre o primeiro e o último dia do itinerário, incluindo dias sem nenhum evento, dentro de um
+// envelope { response, analysed_doc_ids } (ver `schema.ts` -> `dailyScheduleGenerateResultSchema`
+// e `generate-daily-schedule.ts`).
+export function buildGenerateInstructions(): string {
+  return `Você recebe a lista de vouchers da viagem. Antes de escrever qualquer evento, use a tool "openVoucher" para abrir o conteúdo completo do voucher correspondente — nunca invente ou complete informação que não veio de um documento aberto:
+
+Para cada dia entre o primeiro e o último dia do itinerário: abra com a tool SOMENTE os vouchers cujo \`start_date\`/\`end_date\` cubra aquele dia — um voucher por chamada, e reaproveite o conteúdo já obtido se o mesmo \`voucher_id\` já foi aberto num dia anterior (ex: acomodação de várias noites). Voucher do tipo \`travel_insurance\` nunca gera evento — é cobertura, não atividade agendada. Voucher do tipo \`other\` só gera evento se o documento aberto tiver \`dates.start_date\` preenchido.
+
+Monte um array com exatamente um objeto por dia, em ordem cronológica, do primeiro ao último dia do itinerário, incluindo os dias sem nenhum evento, no formato:
+
+\`\`\`json
+[
+  {
+    "date": "YYYY-MM-DD",
+    "title": "Frase curta resumindo o evento mais relevante deste dia. Se nenhum voucher cobrir este dia, não abra nada e use 'Em [cidade]' — nunca preencha com sugestões inventadas",
+    "events": {
+      "morning": [
+        {
+          "title": "Título curto do evento (ex: 'Voo LA 3318 GRU → FOR')",
+          "content": "Markdown com tudo relacionado a este evento neste horário (00:00–11:59): horários, localizador, endereço, contatos relevantes. Usar SOMENTE dados do documento aberto pela tool — nunca inventar informação ausente",
+          "type": "Tipo do voucher que originou este evento: flight | accommodation | transfer | restaurant | car_rental | ferry | experience",
+          "observation": "Preencha SOMENTE quando outro voucher também tocar este mesmo evento e complementar ou contradizer esta informação (ex: um confirma um dado que o outro não traz, ou os dois trazem valores diferentes pro mesmo campo); cite de qual voucher vem cada dado. Use null quando só houver uma fonte para este evento"
+        }
+      ],
+      "afternoon": [ /* eventos entre 12:00 e 17:59, mesmo formato acima */ ],
+      "night": [ /* eventos entre 18:00 e 23:59, mesmo formato acima */ ]
+    }
+  }
+]
+\`\`\`
+
+Sua resposta final deve ser um objeto JSON com exatamente dois campos:
+- "response": o array acima, serializado como texto (string) — não como objeto aninhado.
+- "analysed_doc_ids": lista com os ids de TODOS os vouchers que você abriu com a tool "openVoucher" para montar o roteiro.`;
+}
+
+export function buildGenerateUserMessage(vouchers: VoucherSummary[]): string {
+  return `Vouchers desta viagem:
+${formatVoucherList(vouchers)}
+
+Monte o roteiro dia a dia completo desta viagem, do primeiro ao último dia do itinerário.`;
+}

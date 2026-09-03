@@ -42,6 +42,37 @@ Os dois modos chamam o mesmo `dailyScheduleAgent` (`daily-schedule-agent.ts`), s
 instructions/mensagem diferentes, e devolvem o mesmo formato de saída: `{ schedule,
 travel_start_at, travel_end_at }` (`schema.ts` → `dailyScheduleUpdateSchema`).
 
+## Terceiro modo — geração sob demanda (`POST /travel_agent/daily-schedule`)
+
+Diferente dos dois modos acima (reativos, disparados pela rota de voucher), este é chamado
+diretamente por HTTP (`routes/daily-schedule-routes.ts`), recebendo `travel_id` + `session_id` no
+body. Usado pra (re)gerar o roteiro sob demanda, não a cada voucher.
+
+- Autenticação igual a `routes/voucher-routes.ts`: `requiresAuth: false` na rota + o próprio
+  handler valida o access_token do Supabase Auth do usuário (`Authorization: Bearer`) e resolve o
+  tenant por e-mail (`getTenantIdByEmail`). Como `travel_id` sozinho não escopa por tenant, a rota
+  ainda confere que a viagem pertence a esse tenant (`getTenantIdByTravelId`) antes de gerar/gravar
+  qualquer coisa — devolve 404 se não bater.
+- `generateDailySchedule(tenantId, travelId)` (`generate-daily-schedule.ts`) — mesmo
+  `withTravelScheduleLock` e mesma lista leve de vouchers (`getVoucherSummaries`, filtrando
+  `travel_insurance` via `isRelevant`, exportado de `rebuild-daily-schedule.ts`) dos outros dois
+  modos, mas chama `generateDailyScheduleReport` (`daily-schedule-agent.ts`), que usa um
+  `structuredOutput` PRÓPRIO (`dailyScheduleGenerateResultSchema`, `schema.ts`):
+  `{ response, analysed_doc_ids }` em vez de `{ schedule, travel_start_at, travel_end_at }`.
+- `response` é o array de dias **serializado como string JSON** (não objeto aninhado) — a rota faz
+  `JSON.parse` + `dailyScheduleSchema.parse` antes de gravar, e deriva `travel_start_at`/
+  `travel_end_at` do primeiro/último item do array (não vêm mais como campos separados do model).
+- Ao contrário dos outros dois modos (array **esparso**, só dias com evento — ver seção abaixo),
+  este gera um array **denso**: um item por dia entre o primeiro e o último dia do itinerário,
+  mesmo sem evento (`title: "Em [cidade]"` nesse caso). Ambos usam o mesmo formato de dia por
+  baixo (`dailyScheduleDaySchema`), então são compatíveis com quem lê `daily_schedule` depois —
+  só divergem em terem ou não dias "vazios" no array.
+- Reusa o mesmo `dailyScheduleAgent`/tool `openVoucher` dos outros modos (`instructions` e
+  `structuredOutput` sobrescritos por chamada, ver `buildGenerateInstructions`/
+  `buildGenerateUserMessage` em `prompts/system-prompt.ts`), não um agente separado.
+- `analysed_doc_ids` vem do próprio model (lista dos ids que ele abriu com `openVoucher`) — não é
+  validado/reconciliado contra o que a tool de fato retornou.
+
 ## Por que `travel_start_at`/`travel_end_at` em vez de dias vazios no array
 
 `daily_schedule` é um array **esparso** — só entram dias que têm pelo menos um evento.
@@ -96,7 +127,10 @@ ou sob demanda, não só na exclusão.
 - `tools/open-voucher-tool.ts` — `openVoucherTool`: abre `ai_extracted_data` de um voucher por id
   (`getVoucherExtractedData`, `services/travel-db.ts`), tenant do `requestContext`.
 - `rebuild-daily-schedule.ts` — `updateDailyScheduleForVoucher` e `rebuildDailySchedule`, os dois
-  pontos de entrada chamados pela rota (`routes/voucher-routes.ts`).
+  pontos de entrada chamados pela rota (`routes/voucher-routes.ts`); exporta também `isRelevant`
+  (filtro de `travel_insurance`), reusado por `generate-daily-schedule.ts`.
+- `generate-daily-schedule.ts` — `generateDailySchedule(tenantId, travelId)`, ponto de entrada do
+  terceiro modo (geração sob demanda), chamado por `routes/daily-schedule-routes.ts`.
 
 ## Notas de desenvolvimento
 

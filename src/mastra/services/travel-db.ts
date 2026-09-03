@@ -44,6 +44,14 @@ export async function getTenantIdByEmail(email: string): Promise<string | null> 
   return rows[0]?.tenant_id ?? null;
 }
 
+// Resolve o tenant dono de uma viagem — usado por rotas que recebem só `travel_id` (sem o
+// access_token do usuário pra resolver por e-mail, ver `getTenantIdByEmail` acima), como o
+// endpoint de geração do daily_schedule do zero.
+export async function getTenantIdByTravelId(travelId: string): Promise<string | null> {
+  const { rows } = await getPool().query<{ tenant_id: string | null }>(`select tenant_id from travel where id = $1 limit 1`, [travelId]);
+  return rows[0]?.tenant_id ?? null;
+}
+
 export interface VoucherTypeFull {
   slug: string;
   name: string | null;

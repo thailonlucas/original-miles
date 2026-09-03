@@ -43,7 +43,23 @@ export const dailyScheduleUpdateSchema = z.object({
   travel_end_at: z.string().nullable().describe('YYYY-MM-DD — último dia da viagem, ou null se não houver nenhuma data conhecida ainda.'),
 });
 
+// Saída do endpoint `POST /travel_agent/daily-schedule` (geração do zero, ver
+// `generate-daily-schedule.ts`) — diferente de `dailyScheduleUpdateSchema` porque esse endpoint
+// devolve um envelope de chat (response + docs analisados), não o roteiro estruturado direto. O
+// roteiro em si vem serializado como JSON dentro de `response` (mesmo formato de
+// `dailyScheduleSchema`, mas DENSO: um item por dia entre o primeiro e o último da viagem, mesmo
+// sem evento — ver `prompts/system-prompt.ts` → `buildGenerateInstructions`).
+export const dailyScheduleGenerateResultSchema = z.object({
+  response: z
+    .string()
+    .describe(
+      'Resposta gerada: o array de dias do roteiro (um item por dia entre o primeiro e o último dia do itinerário), serializado como texto JSON.',
+    ),
+  analysed_doc_ids: z.array(z.string()).describe('Lista com os ids dos documentos (vouchers) analisados (abertos pela tool) para montar o roteiro.'),
+});
+
 export type DailyScheduleEvent = z.infer<typeof dailyScheduleEventSchema>;
 export type DailyScheduleDay = z.infer<typeof dailyScheduleDaySchema>;
 export type DailySchedule = z.infer<typeof dailyScheduleSchema>;
 export type DailyScheduleUpdate = z.infer<typeof dailyScheduleUpdateSchema>;
+export type DailyScheduleGenerateResult = z.infer<typeof dailyScheduleGenerateResultSchema>;

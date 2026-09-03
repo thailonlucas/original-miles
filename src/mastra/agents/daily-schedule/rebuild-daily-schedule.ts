@@ -12,7 +12,9 @@ import { applyVoucherToDailySchedule, buildDailyScheduleFromScratch } from './da
 // regra nunca falhar por esquecimento/alucinação do model.
 const EXCLUDED_VOUCHER_TYPES = new Set(['travel_insurance']);
 
-function isRelevant(voucher: VoucherSummary): boolean {
+// Exportado para reuso por `generate-daily-schedule.ts` (endpoint `POST /travel_agent/daily-schedule`) —
+// mesma regra, um único lugar pra ela não divergir entre os dois fluxos.
+export function isRelevant(voucher: VoucherSummary): boolean {
   return !EXCLUDED_VOUCHER_TYPES.has(voucher.voucherTypeSlug);
 }
 

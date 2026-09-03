@@ -20,11 +20,19 @@ Sua tarefa:
 - Releia o texto bruto do zero, campo a campo do schema, e garanta que TODA informação relevante do texto bruto que tenha um campo correspondente no schema esteja presente no JSON final — nenhum dado do texto bruto que caiba no schema pode ficar de fora.
 - Preencha campos do schema que estão faltando, vazios ou nulos no JSON, mas cuja informação existe no texto bruto.
 - Corrija campos que estão errados (valor diferente do que está escrito no texto bruto), incompletos, truncados ou mal formatados.
-- Mantenha inalterado tudo que já está correto — não reescreva nem reformate campos que já batem com o texto bruto sem necessidade.
+- Corrija informação que foi extraída para o campo ERRADO do schema — por exemplo, um dado que caiu num campo genérico (tipo "informações adicionais"/"observações") quando existe um campo mais específico pra ele no schema, ou um valor que foi colocado no campo de outro dado parecido. Mova o valor pro campo correto e remova a duplicata do campo errado.
+- Preste atenção especial (sem se limitar a) a estas categorias, que costumam ser esquecidas ou mal posicionadas na primeira extração:
+  - Datas e horários de check-in/check-out (hospedagem) ou embarque/desembarque (passagens/experiências).
+  - Contatos: telefones, e-mails, endereços, nomes de empresas/fornecedores/agências.
+  - Valores monetários: preço total, taxas, valores por pessoa, moeda, forma de pagamento.
+  - Informações adicionais, observações, políticas (cancelamento, bagagem, documentos exigidos) e condições especiais.
+  - Localizadores, códigos de reserva, números de voucher/bilhete, números de confirmação.
+  - Nomes completos de passageiros/hóspedes e quantidade de pessoas.
+- Mantenha inalterado tudo que já está correto e já no campo certo — não reescreva nem reformate sem necessidade.
 - Não invente informação que não esteja no texto bruto. Se o dado não existir no texto, deixe o campo como está (vazio/nulo/omitido, conforme o schema permitir).
-- Não remova campos válidos que já estavam presentes no JSON extraído.
+- Não remova campos válidos que já estavam presentes no JSON extraído, a menos que estejam duplicados num campo errado (aí remova a duplicata errada, mantendo o valor só no campo correto).
 
-Retorne o JSON revisado seguindo exatamente o schema estruturado fornecido, com o máximo de completude possível em relação ao texto bruto.`;
+Retorne o JSON revisado seguindo exatamente o schema estruturado fornecido, com o máximo de completude e posicionamento correto possível em relação ao texto bruto.`;
 }
 
 // Passo de revisão pós-extração ("processor" pós-extração pedido no pipeline): não é um

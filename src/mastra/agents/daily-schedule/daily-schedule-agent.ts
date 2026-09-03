@@ -2,12 +2,14 @@ import { Agent } from '@mastra/core/agent';
 import { RequestContext } from '@mastra/core/request-context';
 import type { TravelScheduleState, VoucherSummary } from '../../services/travel-db';
 import {
+  buildGenerateInstructions,
+  buildGenerateUserMessage,
   buildIncrementalInstructions,
   buildIncrementalUserMessage,
   buildRebuildInstructions,
   buildRebuildUserMessage,
 } from './prompts/system-prompt';
-import { dailyScheduleUpdateSchema, type DailyScheduleUpdate } from './schema';
+import { dailyScheduleGenerateResultSchema, dailyScheduleUpdateSchema, type DailyScheduleGenerateResult, type DailyScheduleUpdate } from './schema';
 import { openVoucherTool } from './tools/open-voucher-tool';
 
 // Instructions reais são montadas por chamada (rebuild vs update incremental, ver funções abaixo)
@@ -19,7 +21,7 @@ export const dailyScheduleAgent = new Agent({
   name: 'Daily Schedule',
   description: 'Monta/atualiza o roteiro dia a dia de uma viagem (manhã/tarde/noite) a partir dos vouchers já extraídos.',
   instructions: 'Aguardando a lista de vouchers da viagem.',
-  model: 'openai/gpt-4.1',
+  model: 'openai/gpt-5.6-terra',
   tools: { openVoucher: openVoucherTool },
   defaultOptions: {
     // Default do Mastra é baixo demais pra uma viagem com muitos vouchers — cada voucher relevante
@@ -53,6 +55,19 @@ export async function applyVoucherToDailySchedule(
 ): Promise<DailyScheduleUpdate> {
   const { object } = await dailyScheduleAgent.generate(buildIncrementalUserMessage(currentState, vouchers, newVoucherId), {
     instructions: buildIncrementalInstructions(),
+    requestContext: new RequestContext([['tenant_id', tenantId]]),
+  });
+  return object;
+}
+
+// Usado só pelo endpoint `POST /travel_agent/daily-schedule` (ver `generate-daily-schedule.ts`) —
+// mesmo agente/tool das funções acima ("openVoucher"), mas com um schema de saída próprio desse
+// fluxo (envelope { response, analysed_doc_ids }, ver `schema.ts`), por isso o override de
+// `structuredOutput` por chamada em vez de usar o `defaultOptions` do agente.
+export async function generateDailyScheduleReport(vouchers: VoucherSummary[], tenantId: string): Promise<DailyScheduleGenerateResult> {
+  const { object } = await dailyScheduleAgent.generate(buildGenerateUserMessage(vouchers), {
+    instructions: buildGenerateInstructions(),
+    structuredOutput: { schema: dailyScheduleGenerateResultSchema },
     requestContext: new RequestContext([['tenant_id', tenantId]]),
   });
   return object;

@@ -19,7 +19,10 @@ import { voucherTypeAgent } from './agents/voucher-type/voucher-type-agent';
 import { textExtractionAgent } from './agents/voucher-extractor/text-extraction-agent';
 import { voucherExtractionAgent } from './agents/voucher-extractor/extraction-agent';
 import { dailyScheduleAgent } from './agents/daily-schedule/daily-schedule-agent';
+import { scheduleSuggestionAgent } from './agents/schedule-suggestion/schedule-suggestion-agent';
 import { voucherExtractRoute, voucherDeleteRoute } from './routes/voucher-routes';
+import { dailyScheduleGenerateRoute } from './routes/daily-schedule-routes';
+import { scheduleSuggestionRoute } from './routes/schedule-suggestion-routes';
 
 // Silencia os warnings do AI SDK sobre o embedding model do Mastra rodar em modo de
 // compatibilidade de spec (v2 -> v3) — o fallback automático já cobre, é só ruído no log.
@@ -42,12 +45,13 @@ export const mastra = new Mastra({
     textExtractionAgent,
     voucherExtractionAgent,
     dailyScheduleAgent,
+    scheduleSuggestionAgent,
   },
   server: {
     // As rotas de travel_agent/* usam o access_token do Supabase Auth do usuário (requiresAuth:
     // false + verificação própria dentro da rota), não a chave estática abaixo.
     auth: new SimpleAuth({ tokens: { [env.ORIGINAL_MILES_API_KEY]: { id: 'original-miles-api' } } }),
-    apiRoutes: [voucherExtractRoute, voucherDeleteRoute],
+    apiRoutes: [voucherExtractRoute, voucherDeleteRoute, dailyScheduleGenerateRoute, scheduleSuggestionRoute],
   },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
