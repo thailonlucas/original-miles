@@ -13,3 +13,6 @@ src/mastra/public/
 *.duckdb
 *.duckdb.wal
 backups/
+
+# local-only skill, not shared with the team
+.claude/skills/deploy-production/
