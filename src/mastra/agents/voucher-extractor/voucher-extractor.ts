@@ -1,6 +1,7 @@
 import { getVoucherTypeBySlug } from '../../services/travel-db';
 import { classifyVoucherTypeFromText } from '../voucher-type/voucher-type-agent';
 import { extractStructuredVoucherData } from './extraction-agent';
+import { reviewExtractedVoucherData } from './review-agent';
 import { extractRawTextFromDocument } from './text-extraction-agent';
 
 const FALLBACK_VOUCHER_TYPE_SLUG = 'other';
@@ -42,7 +43,10 @@ export async function extractVoucherFromText(rawContent: string, tenantId: strin
     throw new Error(`Nenhum voucher_type "${classification.voucher_type_slug}" nem fallback "other" encontrado para o tenant ${tenantId}.`);
   }
 
-  const extractedData = await extractStructuredVoucherData(rawContent, voucherType);
+  const firstPassData = await extractStructuredVoucherData(rawContent, voucherType);
+  // Passo de revisão: garante que nenhum dado do `rawContent` que caiba no schema ficou de fora
+  // e corrige o que a primeira passada extraiu errado — o pipeline só retorna depois disso.
+  const extractedData = await reviewExtractedVoucherData(rawContent, firstPassData, voucherType);
 
   return {
     rawContent,

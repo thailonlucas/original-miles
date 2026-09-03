@@ -1,0 +1,66 @@
+import { Agent } from '@mastra/core/agent';
+import { RequestContext } from '@mastra/core/request-context';
+import type { VoucherTypeFull } from '../../services/travel-db';
+
+// `voucher_type.ai_provider` guarda "open_ai" (valor legado do fluxo antigo em n8n) — o model
+// router do Mastra usa o prefixo "openai". Outros providers (se algum dia existirem) passam direto.
+function toModelRouterProvider(aiProvider: string | null): string {
+  if (!aiProvider || aiProvider === 'open_ai') return 'openai';
+  return aiProvider;
+}
+
+function buildReviewInstructions(): string {
+  return `Você revisa a extração estruturada de um voucher de viagem, comparando o JSON extraído com o texto bruto (raw content) que deu origem a ele.
+
+Você vai receber:
+1. O texto bruto do documento (raw content).
+2. O JSON já extraído no primeiro passo, seguindo o schema estruturado esperado.
+
+Sua tarefa:
+- Releia o texto bruto do zero, campo a campo do schema, e garanta que TODA informação relevante do texto bruto que tenha um campo correspondente no schema esteja presente no JSON final — nenhum dado do texto bruto que caiba no schema pode ficar de fora.
+- Preencha campos do schema que estão faltando, vazios ou nulos no JSON, mas cuja informação existe no texto bruto.
+- Corrija campos que estão errados (valor diferente do que está escrito no texto bruto), incompletos, truncados ou mal formatados.
+- Mantenha inalterado tudo que já está correto — não reescreva nem reformate campos que já batem com o texto bruto sem necessidade.
+- Não invente informação que não esteja no texto bruto. Se o dado não existir no texto, deixe o campo como está (vazio/nulo/omitido, conforme o schema permitir).
+- Não remova campos válidos que já estavam presentes no JSON extraído.
+
+Retorne o JSON revisado seguindo exatamente o schema estruturado fornecido, com o máximo de completude possível em relação ao texto bruto.`;
+}
+
+// Passo de revisão pós-extração ("processor" pós-extração pedido no pipeline): não é um
+// `Processor` do Mastra porque o `structuredOutput` final (o objeto já parseado) não fica
+// acessível dentro de `processOutputResult`/`processOutputStep` — só `text`/`usage`/`steps` (ver
+// `step-schema.d.ts` do `@mastra/core`). Em vez disso, é um segundo `Agent`, chamado logo após
+// `extractStructuredVoucherData`, que recebe o `raw_content` + o JSON já extraído e devolve a
+// versão enriquecida/corrigida usando o mesmo schema — o extractor só retorna depois desse passo.
+export const voucherReviewAgent = new Agent({
+  id: 'voucher-review',
+  name: 'Voucher Review',
+  description: 'Revisa os dados estruturados extraídos de um voucher, comparando com o texto bruto e enriquecendo/corrigindo campos faltantes ou errados.',
+  instructions: buildReviewInstructions(),
+  model: ({ requestContext }) => requestContext.get<string, string>('review_model') ?? 'openai/gpt-4.1-mini',
+});
+
+export async function reviewExtractedVoucherData(
+  rawContent: string,
+  extractedData: Record<string, unknown>,
+  voucherType: VoucherTypeFull,
+): Promise<Record<string, unknown>> {
+  if (!voucherType.schema) {
+    throw new Error(`voucher_type "${voucherType.slug}" não tem "structured_output" cadastrado no Supabase — não é possível revisar.`);
+  }
+
+  const modelString = `${toModelRouterProvider(voucherType.aiProvider)}/${voucherType.aiModel ?? 'gpt-4.1-mini'}`;
+
+  const { object } = await voucherReviewAgent.generate(
+    `Texto bruto do documento:\n${rawContent}\n\nJSON extraído no primeiro passo:\n${JSON.stringify(extractedData)}`,
+    {
+      requestContext: new RequestContext([['review_model', modelString]]),
+      structuredOutput: {
+        schema: voucherType.schema,
+      },
+    },
+  );
+
+  return object as Record<string, unknown>;
+}

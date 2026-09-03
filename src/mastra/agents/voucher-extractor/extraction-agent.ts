@@ -25,13 +25,10 @@ export const voucherExtractionAgent = new Agent({
     }
     return prompt;
   },
-  model: ({ requestContext }) => {
-    const model = requestContext.get<string, string>('extraction_model');
-    if (!model) {
-      throw new Error('voucher-extraction: requestContext "extraction_model" é obrigatório.');
-    }
-    return model;
-  },
+  // Fallback só é usado quando o Mastra introspecciona a lista de agentes/modelos sem
+  // requestContext (ex.: Studio/playground) — nas chamadas reais, `extractStructuredVoucherData`
+  // sempre passa `extraction_model` explicitamente, que tem prioridade sobre esse default.
+  model: ({ requestContext }) => requestContext.get<string, string>('extraction_model') ?? 'openai/gpt-4.1-mini',
 });
 
 export async function extractStructuredVoucherData(rawContent: string, voucherType: VoucherTypeFull): Promise<Record<string, unknown>> {

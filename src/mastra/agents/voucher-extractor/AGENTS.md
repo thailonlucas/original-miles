@@ -22,6 +22,16 @@ Extrator de vouchers" — substitui o fluxo equivalente hoje em n8n
    instructions e o `structured_output.schema` (JSON Schema, não Zod) como `structuredOutput` da
    chamada. Modelo também vem da linha (`ai_model`/`ai_provider`, ex: `gpt-5.6-luna` + `open_ai` →
    `openai/gpt-5.6-luna`).
+4. **Revisão** (`review-agent.ts`) — segunda passada: recebe o `raw_content` + o JSON da etapa 3 e
+   devolve uma versão revisada, seguindo o mesmo `structured_output.schema`. Objetivo é garantir
+   que nenhuma informação do `raw_content` que caiba no schema fique de fora, e corrigir campos
+   errados/incompletos da primeira extração. `extractVoucher`/`extractVoucherFromText` só retornam
+   depois desse passo — não existe um "extraído, mas ainda não revisado" saindo do pipeline.
+   **Não é um `Processor` do Mastra**: o objeto estruturado final não fica acessível dentro de
+   `processOutputResult`/`processOutputStep` quando se usa `structuredOutput` (só
+   `text`/`usage`/`finishReason`/`steps` — ver `SerializableOutputResult` em
+   `@mastra/core/dist/processors/step-schema.d.ts`), então enriquecer o JSON precisa ser uma
+   segunda chamada de `Agent`, não um hook do pipeline de geração.
 
 `extractVoucher` **não grava nada no Supabase** — só devolve `{ rawContent, voucherTypeSlug,
 voucherTypeConfidence, extractedData }`. Quem persiste na tabela `voucher` é a rota
@@ -44,6 +54,10 @@ mais nada fixo além desses três campos.
   (`extraction_prompt`/`extraction_model`) a cada chamada, porque mudam por `voucher_type`; o
   `structuredOutput.schema` (também por tipo) é passado direto em `.generate()`, não faz parte da
   config do Agent. Ver `extractStructuredVoucherData`.
+- `review-agent.ts` — `Agent` de revisão pós-extração (`reviewExtractedVoucherData`): recebe
+  `raw_content` + JSON extraído, devolve versão enriquecida/corrigida usando o mesmo
+  `structured_output.schema` do `voucher_type`. Modelo vem do mesmo `ai_model`/`ai_provider` do
+  `voucher_type` (via `requestContext`, chave `review_model`).
 - `prompts/text-extraction-prompt.ts` — instructions da etapa de OCR/transcrição.
 
 ## Notas de desenvolvimento
