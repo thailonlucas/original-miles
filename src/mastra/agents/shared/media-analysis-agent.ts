@@ -12,9 +12,9 @@ interface MediaAnalysisAgentConfig {
 }
 
 /**
- * Shared shape behind Luna's media-analysis agents (image, document): a single-purpose
+ * Shared shape behind OriginalMiles's media-analysis agents (image, document): a single-purpose
  * agent with no tools/schema whose only job is turning one piece of media + the user's
- * message into a text description that Luna can process as if it were the original message.
+ * message into a text description that OriginalMiles can process as if it were the original message.
  */
 export function createMediaAnalysisAgent(config: MediaAnalysisAgentConfig) {
   const agent = new Agent({

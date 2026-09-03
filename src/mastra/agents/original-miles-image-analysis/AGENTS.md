@@ -1,4 +1,4 @@
-# AGENTS.md — luna-image-analysis
+# AGENTS.md — original-miles-image-analysis
 
 Leia este arquivo antes de alterar qualquer coisa nesta pasta.
 
@@ -9,12 +9,12 @@ Descreve em texto uma imagem enviada pelo cliente no WhatsApp (foto, print, comp
 ## Relação com outros agentes
 
 - Chamado por `webhooks/zendesk/attachment-router.ts` (`resolveMessageOutput`), quando `messageType === 'image'`, antes da mensagem chegar na Luna.
-- Não roda como `outputProcessor` de nada e não tem relação com o guardrail ou a working memory — é só uma etapa de normalização de input, junto com `agents/luna-document-analysis/` (áudio é tratado à parte, via `services/openai-audio.ts`).
-- Compartilha a factory `agents/shared/media-analysis-agent.ts` com `agents/luna-document-analysis/` — os dois agentes só diferem no tipo da parte multimodal (`image` vs `file`) e no prompt.
+- Não roda como `outputProcessor` de nada e não tem relação com o guardrail ou a working memory — é só uma etapa de normalização de input, junto com `agents/original-miles-document-analysis/` (áudio é tratado à parte, via `services/openai-audio.ts`).
+- Compartilha a factory `agents/shared/media-analysis-agent.ts` com `agents/original-miles-document-analysis/` — os dois agentes só diferem no tipo da parte multimodal (`image` vs `file`) e no prompt.
 
 ## Arquivos desta pasta
 
-- `luna-image-analysis-agent.ts` — monta o `Agent` via `createMediaAnalysisAgent` e exporta `analyzeImage(mediaUrl, mediaType, userMessage)`.
+- `original-miles-image-analysis-agent.ts` — monta o `Agent` via `createMediaAnalysisAgent` e exporta `analyzeImage(mediaUrl, mediaType, userMessage)`.
 - `prompts/system-prompt.ts` — instruções de como descrever a imagem (`buildImageAnalysisPrompt()`).
 
 ## Notas de desenvolvimento

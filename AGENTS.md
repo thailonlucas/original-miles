@@ -28,7 +28,7 @@ Follow this same layout when adding a new agent. Read the agent's own `AGENTS.md
 ## Agents (roadmap)
 
 - `luna` — agente principal, responde o cliente via WhatsApp com base na F.A.Q. da empresa.
-- `luna-guardrail` — roda depois da Luna em toda resposta; decide se ela pode ir pro cliente final ou se deve transferir pra um humano.
+- `original-miles-guardrail` — roda depois da Luna em toda resposta; decide se ela pode ir pro cliente final ou se deve transferir pra um humano.
 - `trending` — observa as mensagens da conversa e popula uma base de conhecimento para o time acompanhar erros e desejos dos clientes em tempo real.
 - `tags` — vários agentes que observam a conversa e adicionam tags para ajudar na tabulação do ticket no Zendesk.
 

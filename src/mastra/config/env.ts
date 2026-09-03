@@ -11,17 +11,21 @@ const envSchema = z.object({
   OPENAI_MODEL: optionalString(),
   // Token exigido no header Authorization (Bearer <token>) pra acessar qualquer rota da API,
   // exceto o webhook do Zendesk (que não manda esse header).
-  LUNA_API_KEY: z.string().min(1, 'LUNA_API_KEY is required'),
+  ORIGINAL_MILES_API_KEY: z.string().min(1, 'ORIGINAL_MILES_API_KEY is required'),
   OPENAI_EMBEDDING_MODEL: optionalString(),
   GOOGLE_GENERATIVE_AI_API_KEY: optionalString(),
 
   SUPABASE_URL: optionalUrl(),
   SUPABASE_SERVICE_ROLE_KEY: optionalString(),
+  // Chave publishable/anon (não secreta) — usada só para validar o access_token do usuário
+  // (Supabase Auth) que o frontend manda em `Authorization: Bearer <token>`, ver
+  // `services/supabase-auth.ts`. Não dá acesso a dado nenhum sozinha (RLS continua valendo).
+  SUPABASE_ANON_KEY: optionalString(),
   // Connection string do Postgres do Supabase (Project Settings > Database > Connection string).
-  // Usada como storage da memória da Luna (@mastra/pg), separado do client REST acima.
+  // Usada como storage da memória da OriginalMiles (@mastra/pg), separado do client REST acima.
   SUPABASE_DB_URL: optionalUrl(),
-  LUNA_TENANT_ID: optionalString(),
-  LUNA_AGENT_ID: optionalString(),
+  OM_TENANT_ID: optionalString(),
+  OM_AGENT_ID: optionalString(),
 
   PINECONE_API_KEY: optionalString(),
   PINECONE_INDEX_NAME: optionalString(),
@@ -40,12 +44,12 @@ const envSchema = z.object({
   ZENDESK_WEBHOOK_ID: optionalString(),
   ZENDESK_WEBHOOK_SECRET: optionalString(),
 
-  LUNA_MESSAGE_BUFFER_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
-  // Quantas vezes tentar gerar uma resposta da Luna antes de desistir e só transferir pra um
-  // humano (ver `askLunaWithFallback` em `routes/zendesk-webhook.ts`).
-  LUNA_ASK_MAX_ATTEMPTS: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
-  LUNA_BUSINESS_HOURS_START_HOUR: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(23).optional()),
-  LUNA_BUSINESS_HOURS_END_HOUR: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(23).optional()),
+  OM_MESSAGE_BUFFER_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
+  // Quantas vezes tentar gerar uma resposta da OriginalMiles antes de desistir e só transferir pra um
+  // humano (ver `askOriginalMilesWithFallback` em `routes/zendesk-webhook.ts`).
+  OM_ASK_MAX_ATTEMPTS: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
+  OM_BUSINESS_HOURS_START_HOUR: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(23).optional()),
+  OM_BUSINESS_HOURS_END_HOUR: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(23).optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

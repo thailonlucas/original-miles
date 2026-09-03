@@ -14,15 +14,13 @@ import {
 } from '@mastra/observability';
 import { env } from './config/env';
 import { requireEnv } from './config/require-env';
-import { luna } from './agents/luna/luna-agent';
-import { customerTypeAgent } from './agents/luna-customer-type/luna-customer-type-agent';
-import { documentAnalysisAgent } from './agents/luna-document-analysis/luna-document-analysis-agent';
-import { lunaGuardrail } from './agents/luna-guardrail/luna-guardrail-agent';
-import { imageAnalysisAgent } from './agents/luna-image-analysis/luna-image-analysis-agent';
-import { lunaWorkingMemoryAgent } from './agents/luna-working-memory/luna-working-memory-agent';
-// import { tagsAgent } from './agents/tags/tags-agent';
-import { lunaHistoryRoute, lunaAsk } from './routes/luna-api';
-import { zendeskWebhookRoute } from './routes/zendesk-webhook';
+import { documentAnalysisAgent } from './agents/original-miles-document-analysis/original-miles-document-analysis-agent';
+import { imageAnalysisAgent } from './agents/original-miles-image-analysis/original-miles-image-analysis-agent';
+import { voucherTypeAgent } from './agents/voucher-type/voucher-type-agent';
+import { textExtractionAgent } from './agents/voucher-extractor/text-extraction-agent';
+import { voucherExtractionAgent } from './agents/voucher-extractor/extraction-agent';
+import { dailyScheduleAgent } from './agents/daily-schedule/daily-schedule-agent';
+import { voucherExtractRoute, voucherDeleteRoute } from './routes/voucher-routes';
 
 // Silencia os warnings do AI SDK sobre o embedding model do Mastra rodar em modo de
 // compatibilidade de spec (v2 -> v3) — o fallback automático já cobre, é só ruído no log.
@@ -38,12 +36,19 @@ export const mastra = new Mastra({
   // isso, cada log sai formatado em várias linhas em vez de um JSON compacto por entrada, o que
   // infla bastante o log do container (sem rotação configurada no host, isso vira disco sumindo).
   logger: new PinoLogger({ name: 'Mastra', level: 'info', prettyPrint: process.env.NODE_ENV !== 'production' }),
-  agents: { luna, lunaGuardrail, customerTypeAgent, lunaWorkingMemoryAgent, imageAnalysisAgent, documentAnalysisAgent },
+  agents: {
+    imageAnalysisAgent,
+    documentAnalysisAgent,
+    voucherTypeAgent,
+    textExtractionAgent,
+    voucherExtractionAgent,
+    dailyScheduleAgent,
+  },
   server: {
-    // Toda rota exige "Authorization: Bearer <LUNA_API_KEY>", exceto o webhook do Zendesk
-    // (que não manda esse header) — ele opta por fora com `requiresAuth: false` na própria rota.
-    auth: new SimpleAuth({ tokens: { [env.LUNA_API_KEY]: { id: 'luna-api' } } }),
-    apiRoutes: [lunaAsk, lunaHistoryRoute, zendeskWebhookRoute],
+    // As rotas de travel_agent/* usam o access_token do Supabase Auth do usuário (requiresAuth:
+    // false + verificação própria dentro da rota), não a chave estática abaixo.
+    auth: new SimpleAuth({ tokens: { [env.ORIGINAL_MILES_API_KEY]: { id: 'original-miles-api' } } }),
+    apiRoutes: [voucherExtractRoute, voucherDeleteRoute],
   },
   storage: new MastraCompositeStore({
     id: 'composite-storage',

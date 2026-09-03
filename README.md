@@ -8,11 +8,11 @@ Luna responde clientes via WhatsApp com base em habilidades (playbooks operacion
 
 | Agente (id na API)      | O que faz                                                                                                     |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `luna`                  | Agente principal. Ver [`src/mastra/agents/luna/AGENTS.md`](src/mastra/agents/luna/AGENTS.md).                    |
-| `luna-guardrail`        | Roda automaticamente após cada resposta da Luna. Ver [`src/mastra/agents/luna-guardrail/AGENTS.md`](src/mastra/agents/luna-guardrail/AGENTS.md). |
-| `luna-customer-type`    | Classifica o contato (vendedor, comprador, parceiro/afiliado, imprensa, funcionário ou improdutivo). Roda automaticamente ao fim de cada turno, como parte da extração de memória observacional. |
+| `luna`                  | Agente principal. Ver [`src/mastra/agents/original-miles/AGENTS.md`](src/mastra/agents/original-miles/AGENTS.md).                    |
+| `original-miles-guardrail`        | Roda automaticamente após cada resposta da Luna. Ver [`src/mastra/agents/original-miles-guardrail/AGENTS.md`](src/mastra/agents/original-miles-guardrail/AGENTS.md). |
+| `original-miles-customer-type`    | Classifica o contato (vendedor, comprador, parceiro/afiliado, imprensa, funcionário ou improdutivo). Roda automaticamente ao fim de cada turno, como parte da extração de memória observacional. |
 
-`luna-guardrail` e `luna-customer-type` rodam sozinhos durante uma conversa normal com a Luna — você não precisa chamá-los diretamente. Eles também aparecem na Mastra Studio caso queira testá-los isoladamente.
+`original-miles-guardrail` e `original-miles-customer-type` rodam sozinhos durante uma conversa normal com a Luna — você não precisa chamá-los diretamente. Eles também aparecem na Mastra Studio caso queira testá-los isoladamente.
 
 ## Instalação
 
@@ -32,14 +32,14 @@ cp .env.example .env
 | Variável | Necessária para | Onde é usada |
 | --- | --- | --- |
 | `OPENAI_API_KEY` | Todos os agentes (modelo de chat) | Sempre obrigatória |
-| `OPENAI_EMBEDDING_MODEL` | `pesquisar_base_conhecimento` (embeddar a pergunta antes de buscar no Pinecone) | [`knowledge-search.ts`](src/mastra/agents/luna/knowledge-search.ts) |
+| `OPENAI_EMBEDDING_MODEL` | `pesquisar_base_conhecimento` (embeddar a pergunta antes de buscar no Pinecone) | [`knowledge-search.ts`](src/mastra/agents/original-miles/knowledge-search.ts) |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Só se algum agente/skill futuro usar Gemini | — |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Habilidades, bases de conhecimento, tarefas, memória de conversa (via HiveOps) | [`hiveops/supabase-hiveops-provider.ts`](src/mastra/hiveops/supabase-hiveops-provider.ts) |
-| `LUNA_TENANT_ID` | Escopar habilidades/bases/tarefas/memória para o tenant certo | [`config/env.ts`](src/mastra/config/env.ts) |
+| `OM_TENANT_ID` | Escopar habilidades/bases/tarefas/memória para o tenant certo | [`config/env.ts`](src/mastra/config/env.ts) |
 | `PINECONE_API_KEY` / `PINECONE_INDEX_NAME` | `pesquisar_base_conhecimento` | [`services/pinecone.ts`](src/mastra/services/pinecone.ts) |
 | `ZENDESK_SUBDOMAIN` / `ZENDESK_EMAIL` / `ZENDESK_API_TOKEN` | `buscar_dados_cliente` | [`services/zendesk.ts`](src/mastra/services/zendesk.ts) |
 
-`OPENAI_MODEL` e `LUNA_AGENT_ID` já estão no schema de env mas ainda não são usados por nenhum código — reservados para quando o system prompt da Luna passar a ser lido da tabela `agents` no Supabase.
+`OPENAI_MODEL` e `OM_AGENT_ID` já estão no schema de env mas ainda não são usados por nenhum código — reservados para quando o system prompt da Luna passar a ser lido da tabela `agents` no Supabase.
 
 ## Rodando
 
@@ -58,7 +58,7 @@ Selecione o agente **luna**, mande uma mensagem e acompanhe as tool calls (`busc
 ### Pela API
 
 ```shell
-curl -X POST http://localhost:4111/api/agents/luna/generate \
+curl -X POST http://localhost:4111/api/agents/original-miles/generate \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{ "role": "user", "content": "Quero cancelar minha compra" }],
@@ -94,8 +94,8 @@ O endpoint `POST /luna/ask` retorna um JSON plano:
 ```
 
 - **`answer`**: resposta pronta pro cliente.
-- **`guardrail`**: classificação da resposta (`reply` | `connect_human` | `reply_and_connect_human`) — ver `agents/luna-guardrail/AGENTS.md`.
-- **`working_memory`**: estado da working memory da Luna pro `resource` da chamada, já incluindo o que foi aprendido *nesta* mensagem (`null` se `memory` não foi enviado ou nada foi aprendido ainda). A atualização é aguardada antes da resposta ser retornada — isso adiciona latência à resposta, ver `agents/luna-working-memory/AGENTS.md`.
+- **`guardrail`**: classificação da resposta (`reply` | `connect_human` | `reply_and_connect_human`) — ver `agents/original-miles-guardrail/AGENTS.md`.
+- **`working_memory`**: estado da working memory da Luna pro `resource` da chamada, já incluindo o que foi aprendido *nesta* mensagem (`null` se `memory` não foi enviado ou nada foi aprendido ainda). A atualização é aguardada antes da resposta ser retornada — isso adiciona latência à resposta, ver `agents/original-miles-working-memory/AGENTS.md`.
 
 ### Consultar histórico + working memory (sem gerar resposta)
 
@@ -136,9 +136,9 @@ Se o guardrail bloquear a resposta (`connect_human`), encaminhe a conversa para 
 
 ## Memória e classificação automática
 
-A cada turno, a Mastra extrai memória observacional da conversa ([`memory/conversation-memory-extractor.ts`](src/mastra/agents/luna/memory/conversation-memory-extractor.ts)):
+A cada turno, a Mastra extrai memória observacional da conversa ([`memory/conversation-memory-extractor.ts`](src/mastra/agents/original-miles/memory/conversation-memory-extractor.ts)):
 - Resumo do problema, dados ainda faltando e dados já coletados.
-- Classifica o tipo de contato via o agente `luna-customer-type`.
+- Classifica o tipo de contato via o agente `original-miles-customer-type`.
 - Sincroniza tudo na tabela `conversation_memory` do Supabase via HiveOps ([`hiveops/`](src/mastra/hiveops)).
 
 ## Storage
@@ -147,8 +147,8 @@ O banco `file:./mastra.db` guarda memória de conversa e observability localment
 
 ## Estrutura do projeto
 
-- `src/mastra/agents/luna/` — agente principal, prompts, tools, memória. Leia o `AGENTS.md` da pasta antes de editar.
-- `src/mastra/agents/luna-guardrail/` — classificador de output. Leia o `AGENTS.md` da pasta antes de editar.
+- `src/mastra/agents/original-miles/` — agente principal, prompts, tools, memória. Leia o `AGENTS.md` da pasta antes de editar.
+- `src/mastra/agents/original-miles-guardrail/` — classificador de output. Leia o `AGENTS.md` da pasta antes de editar.
 - `src/mastra/hiveops/` — acesso a dados do HiveOps (habilidades, bases de conhecimento, incidências, tarefas, tags, conversas) por trás de uma interface (`HiveOpsProvider`), hoje implementada com Supabase. Leia o `AGENTS.md` da pasta antes de editar.
 - `src/mastra/config/` — validação central de env (`env.ts`) e helpers (`require-env.ts`, `time.ts`).
 - `src/mastra/services/` — clients genéricos (Supabase, Pinecone, Zendesk, HTTP).

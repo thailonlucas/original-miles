@@ -15,14 +15,14 @@ export function getSupabaseClient(): SupabaseClient {
   return client;
 }
 
-/** Todo dado da Luna é escopado por tenant no Supabase — atalho pro `LUNA_TENANT_ID` validado. */
+/** Todo dado da OriginalMiles é escopado por tenant no Supabase — atalho pro `OM_TENANT_ID` validado. */
 export function requireTenantId(label: string): string {
-  return requireEnv({ LUNA_TENANT_ID: env.LUNA_TENANT_ID }, label).LUNA_TENANT_ID;
+  return requireEnv({ OM_TENANT_ID: env.OM_TENANT_ID }, label).OM_TENANT_ID;
 }
 
-/** Linha da Luna na tabela `agents` do Supabase — atalho pro `LUNA_AGENT_ID` validado. */
+/** Linha da OriginalMiles na tabela `agents` do Supabase — atalho pro `OM_AGENT_ID` validado. */
 export function requireAgentId(label: string): string {
-  return requireEnv({ LUNA_AGENT_ID: env.LUNA_AGENT_ID }, label).LUNA_AGENT_ID;
+  return requireEnv({ OM_AGENT_ID: env.OM_AGENT_ID }, label).OM_AGENT_ID;
 }
 
 /** Desembrulha o `{ data, error }` que toda query/mutation do Supabase retorna, lançando com uma mensagem consistente. */
