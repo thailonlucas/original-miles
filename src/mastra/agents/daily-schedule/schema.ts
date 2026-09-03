@@ -18,6 +18,18 @@ export const dailyScheduleEventSchema = z.object({
     .describe(
       'Preencha SOMENTE quando outro voucher também tocar este mesmo evento e complementar ou contradizer esta informação (cite de qual voucher vem cada dado). null quando só houver uma fonte para este evento.',
     ),
+  // Opcional (nunca setado pelo agente por conta própria) — só existe em eventos inseridos pelo
+  // endpoint `POST /travel_agent/schedule-suggestion/decision` quando uma sugestão do agente
+  // `schedule-suggestion` é aprovada pelo cliente (ver `agents/schedule-suggestion/apply-suggestion-decision.ts`).
+  // Optional (não nullable) de propósito: fica ausente em todo evento originado de voucher, então
+  // não aparece na saída normal deste agente nem quebra `dailyScheduleSchema.parse` de código antigo.
+  suggested: z
+    .boolean()
+    .optional()
+    .describe(
+      'true quando este evento veio de uma sugestão do agente "schedule-suggestion" aprovada pelo cliente, não de um voucher. Nunca defina ' +
+        'como true por conta própria — se um evento já existente tiver `suggested: true`, preserve esse valor ao reescrever/atualizar o dia.',
+    ),
 });
 
 export const dailyScheduleDaySchema = z.object({

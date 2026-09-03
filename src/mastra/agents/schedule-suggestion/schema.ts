@@ -46,6 +46,13 @@ export const scheduleSuggestionResultSchema = z.object({
   night: scheduleSuggestionPeriodSchema.describe('Sugestões para o período entre 18:00 e 23:59.'),
 });
 
+// Período do dia de uma sugestão — mesmas três chaves de `scheduleSuggestionResultSchema`/
+// `dailyScheduleDaySchema.events`. Usado pelo endpoint de aprovação/rejeição (ver
+// `routes/schedule-suggestion-decision-routes.ts`) pra saber em qual array de `events` a sugestão
+// aprovada entra.
+export const schedulePeriodSchema = z.enum(['morning', 'afternoon', 'night']);
+
 export type ScheduleSuggestionEvent = z.infer<typeof scheduleSuggestionEventSchema>;
 export type ScheduleSuggestionPeriod = z.infer<typeof scheduleSuggestionPeriodSchema>;
 export type ScheduleSuggestionResult = z.infer<typeof scheduleSuggestionResultSchema>;
+export type SchedulePeriod = z.infer<typeof schedulePeriodSchema>;

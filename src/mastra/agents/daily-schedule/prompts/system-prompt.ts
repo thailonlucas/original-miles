@@ -14,6 +14,7 @@ const COMMON_RULES = `## Regras por tipo de voucher
 - Um voucher pode cobrir mais de um dia — inclua o evento correspondente em TODOS os dias que ele cobre (ex: uma hospedagem de check-in dia 10 e check-out dia 15 gera evento nos dias 10, 11, 12, 13, 14 e 15 — não só no check-in e no check-out), mas nunca duplique o mesmo dado como dois eventos diferentes no mesmo dia.
 - Classifique cada evento no período certo pelo horário: morning = 00:00–11:59, afternoon = 12:00–17:59, night = 18:00–23:59. Sem horário no voucher, use o bom senso pelo tipo (ex: check-out costuma ser de manhã, jantar à noite) — mas nunca invente um horário específico no "content", só o período.
 - Se dois ou mais vouchers tocarem o mesmo evento (confirmando ou contradizendo o mesmo dado), preencha "observation" citando de qual voucher vem cada informação. Caso contrário, "observation" é null.
+- Se um evento já existente no roteiro atual tiver o campo "suggested": true, preserve esse campo (com o mesmo valor) ao reescrever/manter esse evento — nunca defina "suggested": true em um evento novo por conta própria, esse campo só existe em sugestões aprovadas pelo cliente.
 - **Só inclua no array de saída os dias que têm pelo menos um evento.** Não crie dias vazios — quem consome isso já sabe o range da viagem por "travel_start_at"/"travel_end_at" e trata qualquer dia fora do array como um dia sem evento.
 - "travel_start_at"/"travel_end_at" cobrem TODO o período conhecido da viagem, a partir das datas mais extremas encontradas nos vouchers abertos.`;
 

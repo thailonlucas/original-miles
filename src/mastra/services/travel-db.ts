@@ -219,6 +219,48 @@ export async function saveTravelSchedule(tenantId: string, travelId: string, sta
   ]);
 }
 
+export interface ScheduleSuggestionDecision {
+  date: string; // YYYY-MM-DD
+  period: 'morning' | 'afternoon' | 'night';
+  event: { title: string; content: string; type: string; observation: string | null };
+  // Motivo original dado pelo agente `schedule-suggestion` pra essa sugestão (ver
+  // `agents/schedule-suggestion/schema.ts` -> `scheduleSuggestionEventSchema.reason`) — guardado
+  // aqui mesmo pra rejeição, pra a "inteligência" da viagem saber TAMBÉM o que foi oferecido e
+  // recusado, não só o que foi aprovado.
+  reason: string | null;
+  status: 'approved' | 'rejected';
+  decidedAt: string; // ISO 8601
+}
+
+// Histórico de decisões (aprovar/rejeitar) sobre sugestões do agente `schedule-suggestion` — a
+// "inteligência" da viagem: usado por `agents/schedule-suggestion/suggest-day-activities.ts` pra
+// alimentar as PRÓXIMAS chamadas de sugestão com o que o cliente já aprovou/rejeitou antes (ver
+// `prompts/system-prompt.ts` desse agente). Ao contrário de `ai_extracted_data`/`daily_schedule`,
+// esta coluna é nova (sem consumidor legado em n8n) — grava jsonb normal, sem o double-encoding
+// dessas duas (ver comentário em `insertVoucher`).
+export async function getApprovedSuggestions(tenantId: string, travelId: string, client: Queryable = getPool()): Promise<ScheduleSuggestionDecision[]> {
+  const { rows } = await client.query<{ approved_suggestions: ScheduleSuggestionDecision[] | null }>(
+    `select approved_suggestions from travel where tenant_id = $1 and id = $2 limit 1`,
+    [tenantId, travelId],
+  );
+  return rows[0]?.approved_suggestions ?? [];
+}
+
+// Concatena a decisão no array jsonb direto no Postgres (`||` de jsonb) em vez de ler+reescrever
+// em código — evita perder uma decisão concorrente sem precisar do advisory lock de
+// `withTravelScheduleLock` só pra esta coluna (que é independente de `daily_schedule`).
+export async function appendApprovedSuggestion(
+  tenantId: string,
+  travelId: string,
+  decision: ScheduleSuggestionDecision,
+  client: Queryable = getPool(),
+): Promise<void> {
+  await client.query(
+    `update travel set approved_suggestions = coalesce(approved_suggestions, '[]'::jsonb) || $1::jsonb where tenant_id = $2 and id = $3`,
+    [JSON.stringify([decision]), tenantId, travelId],
+  );
+}
+
 // Namespace arbitrário pro advisory lock abaixo — só existe pra não colidir com outro uso futuro
 // de `pg_advisory_xact_lock` nesta mesma base (todos usariam a mesma "tabela" de locks do Postgres,
 // que é só um espaço de chaves inteiras, sem relação com nenhuma tabela real).
