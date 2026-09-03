@@ -11,8 +11,8 @@ api:
   image:
     repository: "199420984430.dkr.ecr.us-east-1.amazonaws.com/luna"
     pullPolicy: IfNotPresent
-    tag: "533bdc9"
-    digest: "sha256:e225d2c830a1e4c4ff1801faebdc18131f169a44640366bec6a7ad9d9995ee2b"
+    tag: "4c43b56"
+    digest: "sha256:ad21846b30d71e99d413ff0530880dc9c846ef311a6d8ab5b7b353738d0d114e"
   serviceAccount:
     create: true
     name: luna
@@ -75,7 +75,7 @@ api:
     enabled: true
     env: production
     service: luna
-    version: "533bdc9"
+    version: "4c43b56"
   lifecycle:
     enabled: true
     preStop:
