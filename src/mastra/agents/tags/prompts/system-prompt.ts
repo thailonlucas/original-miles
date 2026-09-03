@@ -32,11 +32,19 @@ Utilize somente quando houver pedido explícito de cancelamento acompanhado de s
   {
     appliesTo: ['cadastro_de_eventos'],
     text: `### cadastro_de_eventos (MUITO IMPORTANTE)
-Utilize somente quando o cliente solicitar EXPLICITAMENTE cadastrar um NOVO evento que ainda não está
-na plataforma E informar obrigatoriamente nome do evento, link do evento e data do evento. Se
-qualquer uma dessas informações estiver ausente, NÃO utilize esta tag (nem suas variantes de data,
-ver regra de data abaixo). NÃO usar pra dúvidas, consultas ou eventos já existentes. Adicione essa
-tag independentemente da data do evento — se o cliente quer cadastrar um evento, ela sempre entra.`,
+Uso ÚNICO E EXCLUSIVO: pedido explícito de cadastro de um evento NOVO que ainda não está na
+plataforma. Nada mais cai aqui — nem dúvida, nem evento já existente, nem qualquer outro sentido de
+"cadastro". Nesse fluxo o bot SEMPRE pede nome do evento, link do evento e data do evento, e ao
+final avisa o cliente que vai encaminhar o pedido pro time de cadastro — essa confirmação do bot é
+o sinal mais claro de que é um caso legítimo. Utilize a tag somente quando o cliente pedir isso
+EXPLICITAMENTE E as 3 informações (nome, link, data do evento) estiverem na conversa; se qualquer
+uma estiver ausente, NÃO utilize esta tag (nem suas variantes de data, ver regra de data abaixo).
+NÃO usar pra dúvidas, consultas ou eventos já existentes. NÃO usar só porque o cliente menciona um
+evento que acontece hoje/essa semana — comprar ingresso, tirar dúvida ou participar de um evento
+existente NÃO é pedido de cadastro, mesmo com data próxima. NÃO usar pra problemas de cadastro/conta
+do próprio cliente (login, dados pessoais, aprovação de cadastro de usuário) — isso é
+atualizar_conta_e_perfil, não cadastro de evento. Adicione essa tag independentemente da data do
+evento — se o cliente quer cadastrar um evento, ela sempre entra.`,
   },
   {
     appliesTo: ['evento_hoje'],
@@ -60,7 +68,10 @@ function buildSpecialRules(tags: readonly TabulacaoTag[]): string {
 // pelo bloco de vendedor (`buildAvailableTagsBlock`) e pelo agente de tags especiais
 // (`buildSpecialTagsSystemPrompt`), já que as 3 variantes são tags críticas nos dois.
 function buildEventDateRule(dates: DateThresholds): string {
-  return `Regra de data pra decidir entre as variantes de cadastro de evento:
+  return `Regra de data pra decidir entre as variantes de cadastro de evento — só aplique esta regra
+DEPOIS de confirmar, pela regra de "cadastro_de_eventos" (nome + link + data do evento, pedido
+explícito), que o cliente realmente quer cadastrar um evento novo. A proximidade da data sozinha
+NUNCA justifica nenhuma variante desta tag:
 - Se o evento acontece entre ${dates.today} e ${dates.in2Days}: cadastro_de_eventos_hoje
 - Se o evento acontece entre ${dates.in3Days} e ${dates.in5Days}: cadastro_de_eventos_essa_semana
 - Se o evento acontece depois de ${dates.in5Days}, ou a conversa não tiver uma data clara: cadastro_de_eventos`;

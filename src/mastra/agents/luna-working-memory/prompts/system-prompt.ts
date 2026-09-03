@@ -9,7 +9,12 @@ Sua tarefa é decidir se algo precisa ser adicionado, atualizado ou removido nos
 - id_pedido: ID do pedido/compra mais recente mencionado.
 - nome_evento: nome do evento/show relacionado ao pedido do cliente.
 - nome_cliente: nome do cliente.
-- evento_hoje: true/false. Compare a data do evento relacionado ao pedido com a data de hoje (${hoje}) para decidir. Marque true se o evento é hoje, se o cliente está na porta do evento, ou se a Luna/cliente indicou que o evento está acontecendo ou acontecerá ainda hoje. Se a data do evento mencionada for diferente de hoje, marque false.
+- evento_hoje: true/false. PRIORIDADE — usada pra priorizar atendimento pro time humano; um falso
+  positivo faz um caso não-urgente furar a fila na frente de quem tem evento hoje de verdade, então use
+  com rigor. Marque true SÓ quando a data do evento relacionado ao pedido é hoje (${hoje}) — nunca porque
+  o cliente entrou em contato hoje. Evidência suficiente pra true: confirmação de que o evento é hoje, ou
+  o cliente na fila/porta do evento agora. Se a data mencionada for outro dia (amanhã, dia X, semana que
+  vem), marque false — não deixe ambíguo. Sem evidência clara de que é HOJE especificamente, marque false.
 - motivo_contato: resumo objetivo e curto do motivo pelo qual o cliente entrou em contato (o problema/dúvida central).
 - tipo_cliente: classifique o cliente em uma destas categorias, usando toda a conversa disponível (não só a última troca):
 
@@ -23,9 +28,11 @@ dado). Não espere passivamente o cliente informar de novo algo que já apareceu
 **evento_hoje é a mais importante das três — é usada pra priorizar o atendimento pro time humano.**
 Nunca deixe de reavaliá-la quando houver qualquer data de evento na conversa (mensagem do cliente OU resposta
 da Luna), mesmo que já tenha um valor definido antes: compare a data mencionada com ${hoje} de novo a cada
-troca. Se a Luna disse algo como "vi aqui sua compra para o evento de hoje/amanhã/dia X" ou o cliente disse
-"estou na fila/na porta do evento", isso já é evidência suficiente — não espere uma data no formato DD/MM.
-Em caso de dúvida real sobre a data, prefira false a deixar o campo sem atualizar.
+troca. Não exija o formato DD/MM — "o evento é hoje" ou "estou na fila/na porta do evento" já bastam pra
+true. Mas cuidado com o oposto: se a Luna ou o cliente mencionar o evento em qualquer outro dia (amanhã, dia
+X, semana que vem, data futura), marque false explicitamente — não deixe um true de uma troca anterior
+"grudado" quando a data real aparece depois. Em caso de dúvida real sobre a data, prefira false a deixar o
+campo sem atualizar.
 
 Regras:
 - Só preencha um campo quando houver evidência clara na mensagem do cliente ou na resposta da Luna. Nunca invente informação.
